@@ -49,7 +49,7 @@ def data_input():
     _valence = 0
     check_false_value = False
 
-
+    # Dropping activity
     df.drop(columns=["activity"])
 
     # df.loc[:,"mood":] = 2*((df.loc[:,"mood":] - df.loc[:,"mood":].min()) / (df.loc[:,"mood":].max() - df.loc[:,"mood":].min())) - 1
@@ -118,7 +118,7 @@ def data_input():
         i+= 1
 
 
-    data_not_temp[:,3:] = ((data_not_temp[:,3:] - np.amin(data_not_temp[:,3:], axis=0)) / (np.amax(data_not_temp[:,3:], axis=0) - np.amin(data_not_temp[:,3:], axis=0)))
+    data_not_temp[:,3:] = 2*((data_not_temp[:,3:] - np.amin(data_not_temp[:,3:], axis=0)) / (np.amax(data_not_temp[:,3:], axis=0) - np.amin(data_not_temp[:,3:], axis=0))) - 1
 
     return data_not_temp
 
@@ -128,7 +128,7 @@ def data_input():
 def model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate):
     model = torch.nn.Sequential(
     torch.nn.Linear(input_dim, h_dim),
-    torch.nn.Sigmoid(),
+    torch.nn.Tanh(),
     torch.nn.Linear(h_dim, output_dim),
     )
 
@@ -144,7 +144,7 @@ def model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate
 def train(input_variable, target_variable, model, loss_fn, optimizer):
     # Create random Tensors to hold inputs and outputs, and wrap them in Variables.
 
-    target_variable = (target_variable) / 10
+    target_variable = (target_variable - 1) / 4.5 - 1
 
     x = Variable(torch.from_numpy(input_variable).float())
     if target_variable.shape[0] == 1:
@@ -195,17 +195,16 @@ def test(input_variable, model):
 
 
 def main():
-    epochs = 10
+    epochs = 20
     batch_size = 32
     input_dim = 18 
-    h_dim = 100
+    h_dim = 10
     h_layers = 1 
     output_dim = 1
     learning_rate = 1e-4
     print_every=1000
     plot_every=100
 
-    model, loss_fn, optimizer = model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate)
 
     dataset = data_input()
 
@@ -218,6 +217,7 @@ def main():
         trainset = dataset[dataset[:,0]!=i,:]
         testset = dataset[dataset[:,0]==i,:]
 
+        model, loss_fn, optimizer = model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate)
         error_person = []
 
 
@@ -227,7 +227,7 @@ def main():
 
             for iterator in range(1,int(trainset.shape[0]/batch_size)):
                 input_variable = trainset[batch_size*(iterator-1):batch_size*iterator,3:]
-                target_variable = trainset[batch_size*(iterator-1):batch_size*iterator,2]
+                target_variable = trainset[batch_size*(iterator-1)+1:batch_size*iterator+1,2]
                 print_loss = train(input_variable, target_variable, model, loss_fn, optimizer)
 
                 # print('the average loss is %.4f' %  (print_loss))
@@ -242,11 +242,11 @@ def main():
 
             for iterator in range(1,int(testset.shape[0]/batch_size)+1):
                 input_variable = testset[batch_size*(iterator-1):batch_size*iterator,3:]
-                target_variable = trainset[batch_size*(iterator-1):batch_size*iterator,2]
+                target_variable = trainset[batch_size*(iterator-1)+1:batch_size*iterator+1,2]
 
                 predicted_mood = test(input_variable, model)
 
-                predicted_mood = (predicted_mood) * 10
+                predicted_mood = (predicted_mood+1) * 4.5 + 1
 
                 if predicted_mood.shape[0] == 1:
                     test_errors.append(abs(float(predicted_mood) - target_variable))
@@ -257,7 +257,6 @@ def main():
 
 
             average_errors = sum(test_errors) / len(test_errors)
-            print(average_errors)
             error_person.append(average_errors)
 
         error_per_person.append(error_person)
