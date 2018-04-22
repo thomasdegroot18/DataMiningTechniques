@@ -50,7 +50,8 @@ def data_input():
     check_false_value = False
 
     # Dropping activity
-    df.drop(columns=["activity"])
+    df.drop(columns=["activity", "screen", "call", "sms", "appCat.builtin", "appCat.communication", "appCat.entertainment", "appCat.finance", "appCat.game", "appCat.office", "appCat.other", "appCat.social", "appCat.travel", "appCat.unknown", "appCat.utilities", "appCat.weather"])
+
 
     # df.loc[:,"mood":] = 2*((df.loc[:,"mood":] - df.loc[:,"mood":].min()) / (df.loc[:,"mood":].max() - df.loc[:,"mood":].min())) - 1
 
@@ -201,7 +202,7 @@ def main():
     h_dim = 10
     h_layers = 1 
     output_dim = 1
-    learning_rate = 1e-4
+    learning_rate = 0.0001
     print_every=1000
     plot_every=100
 
@@ -212,12 +213,16 @@ def main():
 
     error_per_person = []
 
+    model = {}
+    loss_fn = {}
+    optimizer = {}
+
 
     for i in set(dataset[:,0]):
         trainset = dataset[dataset[:,0]!=i,:]
         testset = dataset[dataset[:,0]==i,:]
 
-        model, loss_fn, optimizer = model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate)
+        model[i], loss_fn[i], optimizer[i] = model_init(batch_size, input_dim, h_dim, h_layers, output_dim, learning_rate)
         error_person = []
 
 
@@ -228,7 +233,7 @@ def main():
             for iterator in range(1,int(trainset.shape[0]/batch_size)):
                 input_variable = trainset[batch_size*(iterator-1):batch_size*iterator,3:]
                 target_variable = trainset[batch_size*(iterator-1)+1:batch_size*iterator+1,2]
-                print_loss = train(input_variable, target_variable, model, loss_fn, optimizer)
+                print_loss = train(input_variable, target_variable, model[i], loss_fn[i], optimizer[i])
 
                 # print('the average loss is %.4f' %  (print_loss))
 
@@ -244,7 +249,7 @@ def main():
                 input_variable = testset[batch_size*(iterator-1):batch_size*iterator,3:]
                 target_variable = trainset[batch_size*(iterator-1)+1:batch_size*iterator+1,2]
 
-                predicted_mood = test(input_variable, model)
+                predicted_mood = test(input_variable, model[i])
 
                 predicted_mood = (predicted_mood+1) * 4.5 + 1
 
